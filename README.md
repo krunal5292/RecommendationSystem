@@ -23,8 +23,9 @@
 
 1. Go to Project Root Directory using cmd
 2. Run below two Command respectively
-     1. docker-compose build 
-     2. docker-compose up
+     1. gradlew build 
+     2. docker-compose build   
+     3. docker-compose up
 
 ### User Below APIs to create Order and get Recommendations.
 ##### 1. http://localhost:8080/orderengine/placeOrder
