@@ -34,9 +34,9 @@ public class ReadTestDataController {
         return ResponseEntity.ok(orderService.placeOrder(order));
     }
 
-    @GetMapping("/getRecommendedProducts/{productName}")
-    public ResponseEntity<List<String>> getRecommendedProducts(@PathVariable String productName) {
-        return ResponseEntity.ok(engine.getRecommendedProducts(productName));
+    @GetMapping("/getRecommendedProducts/{productId}")
+    public ResponseEntity<List<String>> getRecommendedProducts(@PathVariable String productId) {
+        return ResponseEntity.ok(engine.getRecommendedProducts(productId));
     }
 
 }

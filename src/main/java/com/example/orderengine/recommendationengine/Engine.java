@@ -1,13 +1,16 @@
 package com.example.orderengine.recommendationengine;
 
 import com.example.orderengine.modal.Order;
+import com.example.orderengine.modal.Product;
 import com.example.orderengine.order.OrderService;
+import com.example.orderengine.utility.ProductCatchManager;
 import com.github.chen0040.fpm.AssocRuleMiner;
 import com.github.chen0040.fpm.apriori.Apriori;
 import com.github.chen0040.fpm.data.ItemSet;
 import com.github.chen0040.fpm.data.ItemSets;
 import com.github.chen0040.fpm.data.MetaData;
 import com.github.chen0040.fpm.fpg.FPGrowth;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +23,8 @@ public class Engine {
 
     @Autowired
     private OrderService orderService;
-
+    @Autowired
+    private ProductCatchManager productCatchManager;
     private static ItemSets fis = null;
     private static ItemSets max_frequent_item_sets = null;
 
@@ -33,7 +37,7 @@ public class Engine {
                 List<List<String>> dataset = new ArrayList<>();
                 orderServiceAll.forEach(e -> dataset.add(e.getProducts().stream().map(product -> product.getProductDetails()).collect(Collectors.toList())));
                 AssocRuleMiner method = new FPGrowth();
-                method.setMinSupportLevel(2);
+                method.setMinSupportLevel(3);
                 MetaData metaData = new MetaData(dataset);
 
                 // obtain all frequent item sets with support level not below 2
@@ -46,7 +50,7 @@ public class Engine {
 //                max_frequent_item_sets.stream().forEach(itemSet -> System.out.println("item-set: " + itemSet));
 
                 System.out.println("----- MODAL UPDATE DONE -----");
-                Thread.sleep(10000);
+                Thread.sleep(600000);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -54,7 +58,10 @@ public class Engine {
         new Thread(task).start();
     }
 
-    public List<String> getRecommendedProducts(String productName) {
+    public List<String> getRecommendedProducts(String productId) {
+        Product product = this.productCatchManager.getProduct(productId);
+        final String productName = product == null ? "" : product.getProductDetails();
+
         Map<ItemSet, Integer> frequencycheckMap = new HashMap<>();
         Map<ItemSet, Set<String>> uniqueItemSet = new HashMap<>();
 
@@ -62,10 +69,13 @@ public class Engine {
             Set<String> products = new HashSet<>(itemSet.getItems().stream().map(e -> e.toLowerCase()).collect(Collectors.toList()));
             uniqueItemSet.put(itemSet, products);
         });
-        max_frequent_item_sets.stream().forEach(itemSet -> {
-            Set<String> set = uniqueItemSet.get(itemSet);
-            frequencycheckMap.put(itemSet, set.contains(productName.toLowerCase()) ? frequencycheckMap.get(productName.toLowerCase()) != null ? frequencycheckMap.get(productName.toLowerCase()) + 5 : 5 : 0);
-        });
+
+        if (!"".equalsIgnoreCase(productName)) {
+            max_frequent_item_sets.stream().forEach(itemSet -> {
+                Set<String> set = uniqueItemSet.get(itemSet);
+                frequencycheckMap.put(itemSet, set.contains(productName.toLowerCase()) ? frequencycheckMap.get(productName.toLowerCase()) != null ? frequencycheckMap.get(productName.toLowerCase()) + 5 : 5 : 0);
+            });
+        }
 
 //        frequencycheckMap.forEach((k, v) -> System.out.println(k + " : " + v));
         Map<ItemSet, Integer> sortedByCount = frequencycheckMap.entrySet()
@@ -73,8 +83,8 @@ public class Engine {
                 .sorted((Map.Entry.<ItemSet, Integer>comparingByValue().reversed()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
 
-        return sortedByCount.keySet().stream()
-                .flatMap(aa -> aa.getItems().stream())
-                .limit(5).collect(Collectors.toList());
+        List<String> collect = sortedByCount.keySet().stream().flatMap(aa -> aa.getItems().stream()).limit(5).collect(Collectors.toList());
+        collect.add(productName);
+        return collect;
     }
 }
